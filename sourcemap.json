@@ -1,0 +1,1 @@
+{"name":"cardinal-components","className":"ModuleScript","filePaths":["src\\init.luau","default.project.json"],"children":[{"name":"Client","className":"LocalScript","filePaths":["src\\Client.client.luau"]},{"name":"Server","className":"Script","filePaths":["src\\Server.server.luau"]}]}

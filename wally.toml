@@ -1,0 +1,10 @@
+[package]
+name = "remnantsofsiren/cardinal-components"
+version = "0.0.7"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+description = "Cardinal's Component Companion"
+
+[dependencies]
+Trove = "sleitnick/trove@^1"
+CardinalLifecycles = "remnantsofsiren/cardinallifecycles@^0"
