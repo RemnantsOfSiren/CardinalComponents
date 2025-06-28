@@ -14,9 +14,9 @@ local Trove = require(script.Parent.Trove)
 local CardinalLifecycles = require(script.Parent.CardinalLifecycles)
 
 export type SubComponentConfig = {
-    IsActor: boolean?,
-    Instance: any,
-    [any]: any,
+	IsActor: boolean?,
+	Instance: any,
+	[any]: any,
 }
 
 local function Noop() end
@@ -25,64 +25,64 @@ local Component = {}
 Component.__index = Component
 
 function Component.new(Config: ComponentConfig)
-    local self = setmetatable(Config, Component)
-    
-    if not Config.IsActor then
-        for Index, CallbackOrParam in pairs(Config) do
-            if type(Index) ~= "string" then
-                continue
-            end
+	local self = setmetatable(Config, Component)
 
-            local Event = string.gsub(Index, "On", "")
+	if not Config.IsActor then
+		for Index, CallbackOrParam in pairs(Config) do
+			if type(Index) ~= "string" then
+				continue
+			end
 
-            if Event == "Destroy" or Event == "Init" then
-                continue
-            end
+			local Event = string.gsub(Index, "On", "")
 
-            if type(CallbackOrParam) == "function" then
-                local Success = pcall(function() 
-                    RunService[Event]:Once(Noop)
-                end)
+			if Event == "Destroy" or Event == "Init" then
+				continue
+			end
 
-                if not Success then
-                    continue
-                end
+			if type(CallbackOrParam) == "function" then
+				local Success = pcall(function()
+					RunService[Event]:Once(Noop)
+				end)
 
-                CardinalLifecycles(RunService[Event], function(...)
-                    if not self.__Active then
-                        return
-                    end
+				if not Success then
+					continue
+				end
 
-                    CallbackOrParam(self, ...)
-                end)
-            end
-        end
-    end
-    
-    return self
+				CardinalLifecycles(RunService[Event], function(...)
+					if not self.__Active then
+						return
+					end
+
+					CallbackOrParam(self, ...)
+				end)
+			end
+		end
+	end
+
+	return self
 end
 
 export type ComponentConfig = {
-    Tag: string,
-    IsActor: boolean?,
-    Ancestors: { string }?,
-    [any]: any,
+	Tag: string,
+	IsActor: boolean?,
+	Ancestors: { string }?,
+	[any]: any,
 }
 
 local Loaded = {}
 
 local function ComponentCreator(Config: {
-    Module: ModuleScript,
-    Component: ComponentConfig
+	Module: ModuleScript,
+	Component: ComponentConfig,
 })
-    local _Component = Config.Component
-    local Tag = _Component.Tag
-    local Ancestors = _Component.Ancestors or { workspace }
+	local _Component = Config.Component
+	local Tag = _Component.Tag
+	local Ancestors = _Component.Ancestors or { workspace }
 
-    _Component.Tag = nil
-    _Component.Ancestors = nil
+	_Component.Tag = nil
+	_Component.Ancestors = nil
 
-    local Components = {}
+	local Components = {}
 
 	local function IsDescendantOfAncestors(Object)
 		local IsModel = Object:IsA("Model")
@@ -102,180 +102,180 @@ local function ComponentCreator(Config: {
 		return false
 	end
 
-    local function OnObjectAdded(Object: Instance)
-        if not Components[Object] then
-            if not _Component.IsActor then
-                local subComponent = table.clone(_Component)
-                subComponent.Instance = Object
-                subComponent.__Active = false
-                local Cleaner = Trove.new()
-                subComponent.Cleaner = Cleaner:Extend()
+	local function OnObjectAdded(Object: Instance)
+		if not Components[Object] then
+			if not _Component.IsActor then
+				local subComponent = table.clone(_Component)
+				subComponent.Instance = Object
+				subComponent.__Active = false
+				local Cleaner = Trove.new()
+				subComponent.Cleaner = Cleaner:Extend()
 
-                subComponent = setmetatable(Component.new(subComponent), _Component)
+				subComponent = setmetatable(Component.new(subComponent), _Component)
 
-                local function AncestryChanged()
-                    local IsDescendant = IsDescendantOfAncestors(Object)
-            
-                    if not IsDescendant and subComponent.__Active then
-                        subComponent.__Active = false
-                    elseif IsDescendant and not subComponent.__Active then
-                        subComponent.__Active = true
-                        local Init = subComponent.OnInit or subComponent.Init
-                        if Init then
-                            task.spawn(Init, subComponent)
-                        end
-                    end
-                end
-        
-                Cleaner:Connect(Object.AncestryChanged, AncestryChanged)
-                if Object:IsA("Model") then
+				local function AncestryChanged()
+					local IsDescendant = IsDescendantOfAncestors(Object)
+
+					if not IsDescendant and subComponent.__Active then
+						subComponent.__Active = false
+					elseif IsDescendant and not subComponent.__Active then
+						subComponent.__Active = true
+						local Init = subComponent.OnInit or subComponent.Init
+						if Init then
+							task.spawn(Init, subComponent)
+						end
+					end
+				end
+
+				Cleaner:Connect(Object.AncestryChanged, AncestryChanged)
+				if Object:IsA("Model") then
 					Cleaner:Connect(Object:GetPropertyChangedSignal("PrimaryPart"), AncestryChanged)
 				end
-                task.spawn(AncestryChanged)
+				task.spawn(AncestryChanged)
 
-                Cleaner:Connect(Object.Destroying, function()
-                    if Cleaner then
-                        Cleaner:Destroy()
-                    end
-                    
-                    if subComponent.Destroy then
-                        task.spawn(subComponent.Destroy, subComponent)
-                    end
-                    Components[Object] = nil
-                end)
+				Cleaner:Connect(Object.Destroying, function()
+					if Cleaner then
+						Cleaner:Destroy()
+					end
 
-                Components[Object] = subComponent
-            else
-                local Cleaner = Trove.new()
+					if subComponent.Destroy then
+						task.spawn(subComponent.Destroy, subComponent)
+					end
+					Components[Object] = nil
+				end)
 
-                local Actor = Cleaner:Add(Instance.new("Actor"), "Destroy")
+				Components[Object] = subComponent
+			else
+				local Cleaner = Trove.new()
 
-                local Runner = RunService:IsServer() and script.Server:Clone() or script.Client:Clone()
-                
-                Runner.Parent = Actor
+				local Actor = Cleaner:Add(Instance.new("Actor"), "Destroy")
 
-                local Ref = Cleaner:Add(Instance.new("ObjectValue"), "Destroy")
-                Ref.Name = "ObjectRef"
-                Ref.Value = Object
-                Ref.Parent = Runner
-                
-                local Module = Cleaner:Add(Config.Module:Clone(), "Destroy")
-                Module.Name = "Module"
-                Module.Parent = Runner
+				local Runner = RunService:IsServer() and script.Server:Clone() or script.Client:Clone()
 
-                local BindableEvent: BindableEvent = Cleaner:Add(Instance.new("BindableEvent"), "Destroy")
-                BindableEvent.Name = "OnInit"
-                BindableEvent.Parent = Runner
+				Runner.Parent = Actor
 
-                local BindableFunction: BindableFunction = Cleaner:Add(Instance.new("BindableFunction"), "Destroy")
-                BindableFunction.Name = "InvokeCallback"
-                BindableFunction.Parent = Runner
+				local Ref = Cleaner:Add(Instance.new("ObjectValue"), "Destroy")
+				Ref.Name = "ObjectRef"
+				Ref.Value = Object
+				Ref.Parent = Runner
 
-                local Active = false
+				local Module = Cleaner:Add(Config.Module:Clone(), "Destroy")
+				Module.Name = "Module"
+				Module.Parent = Runner
 
-                local function AncestryChanged()
-                    local IsDescendant = IsDescendantOfAncestors(Object)
-            
-                    if not IsDescendant and Active then
-                        Active = false
-                    elseif IsDescendant and not Active then
-                        Active = true
-                    end
+				local BindableEvent: BindableEvent = Cleaner:Add(Instance.new("BindableEvent"), "Destroy")
+				BindableEvent.Name = "OnInit"
+				BindableEvent.Parent = Runner
 
-                    BindableEvent:Fire(Active, script.Parent.Trove)
-                end
-        
-                Cleaner:Connect(Object.AncestryChanged, AncestryChanged)
-                task.delay(0.1, AncestryChanged)
+				local BindableFunction: BindableFunction = Cleaner:Add(Instance.new("BindableFunction"), "Destroy")
+				BindableFunction.Name = "InvokeCallback"
+				BindableFunction.Parent = Runner
 
-                Cleaner:Connect(Actor.Destroying, function()
-                    if Cleaner then
-                        Cleaner:Destroy()
-                    end
-                    Components[Object] = nil
-                end)
+				local Active = false
 
-                Actor.Parent = Object
-                
-                local Helper = {}
+				local function AncestryChanged()
+					local IsDescendant = IsDescendantOfAncestors(Object)
 
-                for Index in _Component do
-                    if type(Index) ~= "string" then
-                        continue
-                    end
-        
-                    local Event = string.gsub(Index, "On", "")
-        
-                    if Event == "Destroy" or Event == "Init" then
-                        continue
-                    end
-                    
-                    Helper[Index] = function(_, ...)
-                        if not Active then
-                            return Noop()
-                        end
+					if not IsDescendant and Active then
+						Active = false
+					elseif IsDescendant and not Active then
+						Active = true
+					end
 
-                        return BindableFunction:Invoke(Index, ...)
-                    end
-                end
+					BindableEvent:Fire(Active, script.Parent.Trove)
+				end
 
-                Components[Object] = Helper
-            end
-        end
-    end
+				Cleaner:Connect(Object.AncestryChanged, AncestryChanged)
+				task.delay(0.1, AncestryChanged)
 
-    for _, Object in CollectionService:GetTagged(Tag) do
-        task.spawn(OnObjectAdded, Object)
-    end
+				Cleaner:Connect(Actor.Destroying, function()
+					if Cleaner then
+						Cleaner:Destroy()
+					end
+					Components[Object] = nil
+				end)
 
-    CollectionService:GetInstanceAddedSignal(Tag):Connect(OnObjectAdded)
+				Actor.Parent = Object
 
-    CollectionService:GetInstanceRemovedSignal(Tag):Connect(function(Object)
-        local _Component = Components[Object]
-        
-        if not _Component then
-            return
-        end
+				local Helper = {}
 
-        if _Component.Destroy then
-            task.spawn(_Component.Destroy, _Component)
-        end
+				for Index in _Component do
+					if type(Index) ~= "string" then
+						continue
+					end
 
-        if not Config.Component.IsActor then
-            _Component.__Cleaner:Destroy()
-        end
+					local Event = string.gsub(Index, "On", "")
 
-        Components[Object] = nil
-    end)
+					if Event == "Destroy" or Event == "Init" then
+						continue
+					end
 
-    Loaded[Tag] = Components
+					Helper[Index] = function(_, ...)
+						if not Active then
+							return Noop()
+						end
+
+						return BindableFunction:Invoke(Index, ...)
+					end
+				end
+
+				Components[Object] = Helper
+			end
+		end
+	end
+
+	for _, Object in CollectionService:GetTagged(Tag) do
+		task.spawn(OnObjectAdded, Object)
+	end
+
+	CollectionService:GetInstanceAddedSignal(Tag):Connect(OnObjectAdded)
+
+	CollectionService:GetInstanceRemovedSignal(Tag):Connect(function(Object)
+		local _Component = Components[Object]
+
+		if not _Component then
+			return
+		end
+
+		if _Component.Destroy then
+			task.spawn(_Component.Destroy, _Component)
+		end
+
+		if not Config.Component.IsActor then
+			_Component.__Cleaner:Destroy()
+		end
+
+		Components[Object] = nil
+	end)
+
+	Loaded[Tag] = Components
 end
 
 return {
-    Load = function(Folder: Folder, Config: { Deep: boolean?, Predicate: ((Instance: Instance) -> boolean)?}?)
-        local ModulesToLoad = if Config and Config.Deep then Folder:GetDescendants() else Folder:GetChildren()
-        for _, Module in ModulesToLoad do
-            if Module:IsA("ModuleScript") then
-                if Config and Config.Predicate and not Config.Predicate(Module) then
-                    continue
-                end
-                local Success, _Component = pcall(require, Module)
+	Load = function(Folder: Folder, Config: { Deep: boolean?, Predicate: ((Instance: Instance) -> boolean)? }?)
+		local ModulesToLoad = if Config and Config.Deep then Folder:GetDescendants() else Folder:GetChildren()
+		for _, Module in ModulesToLoad do
+			if Module:IsA("ModuleScript") then
+				if Config and Config.Predicate and not Config.Predicate(Module) then
+					continue
+				end
+				local Success, _Component = pcall(require, Module)
 
-                if Success and type(Component) == "table" then
-                    if not _Component.Tag then
-                        _Component.Tag = Module.Name
-                    end
+				if Success and type(Component) == "table" then
+					if not _Component.Tag then
+						_Component.Tag = Module.Name
+					end
 
-                    task.spawn(ComponentCreator, {
-                        Module = Module, 
-                        Component = _Component
-                    })
-                end
-            end
-        end
-    end,
-    
-    Get = function(Tag: string): { [Instance]: SubComponentConfig }?
-        return Loaded[Tag]
-    end
+					task.spawn(ComponentCreator, {
+						Module = Module,
+						Component = _Component,
+					})
+				end
+			end
+		end
+	end,
+
+	Get = function(Tag: string): { [Instance]: SubComponentConfig }?
+		return Loaded[Tag]
+	end,
 }
