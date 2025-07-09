@@ -242,7 +242,7 @@ local function ComponentCreator(Config: {
 		end
 
 		if not Config.Component.IsActor then
-			_Component.__Cleaner:Destroy()
+			_Component.Cleaner:Destroy()
 		end
 
 		Components[Object] = nil

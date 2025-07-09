@@ -1,6 +1,6 @@
 [package]
 name = "remnantsofsiren/cardinal-components"
-version = "0.0.7"
+version = "0.0.9"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 description = "Cardinal's Component Companion"
