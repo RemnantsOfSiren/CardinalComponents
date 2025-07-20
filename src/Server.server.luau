@@ -24,8 +24,6 @@ local Object = ObjectRef.Value
 Module.Instance = Object
 
 OnInit.Event:Connect(function(Active, TroveRef)
-	Module.__Active = Active
-
 	local Init = Module.OnInit or Module.Init
 
 	if Active and Init then
@@ -36,8 +34,10 @@ OnInit.Event:Connect(function(Active, TroveRef)
 		local Trove = require(TroveRef) :: { [any]: any }
 		Module.Cleaner = Trove.new()
 
-		task.spawn(Init, Module)
+		Module:Init()
 	end
+
+	Module.__Active = Active
 end)
 
 InvokeCallback.OnInvoke = function(CallbackName, ...)

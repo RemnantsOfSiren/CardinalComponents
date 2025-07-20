@@ -119,11 +119,11 @@ local function ComponentCreator(Config: {
 					if not IsDescendant and subComponent.__Active then
 						subComponent.__Active = false
 					elseif IsDescendant and not subComponent.__Active then
-						subComponent.__Active = true
 						local Init = subComponent.OnInit or subComponent.Init
 						if Init then
-							task.spawn(Init, subComponent)
+							Init(subComponent)
 						end
+						subComponent.__Active = true
 					end
 				end
 
