@@ -24,17 +24,29 @@ local Object = ObjectRef.Value
 Module.Instance = Object
 
 OnInit.Event:Connect(function(Active, TroveRef)
-	local Init = Module.OnInit or Module.Init
+	if Module.__Active == Active then
+		return
+	end
 
-	if Active and Init then
+	if not Active then
 		if Module.Cleaner then
 			Module.Cleaner:Destroy()
 		end
 
+		Module.__Initialized = false
+		Module.__Active = false
+		return
+	end
+
+	local Init = Module.OnInit or Module.Init
+
+	if Active and Init then
 		local Trove = require(TroveRef) :: { [any]: any }
 		Module.Cleaner = Trove.new()
 
 		Module:Init()
+
+		Module.__Initialized = true
 	end
 
 	Module.__Active = Active
@@ -78,7 +90,7 @@ for Index, CallbackOrParam in Module do
 		end
 
 		RunService[Event]:ConnectParallel(function(...)
-			if not Module.__Active then
+			if not Module.__Initialized then
 				return
 			end
 

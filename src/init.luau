@@ -7,11 +7,11 @@
 
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ]]
-local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 
-local Trove = require(script.Parent.Trove)
 local CardinalLifecycles = require(script.Parent.CardinalLifecycles)
+local Trove = require(script.Parent.Trove)
 
 export type SubComponentConfig = {
 	IsActor: boolean?,
@@ -49,7 +49,7 @@ function Component.new(Config: ComponentConfig)
 				end
 
 				CardinalLifecycles(RunService[Event], function(...)
-					if not self.__Active then
+					if not self.__Initialized then
 						return
 					end
 
@@ -118,19 +118,23 @@ local function ComponentCreator(Config: {
 
 					if not IsDescendant and subComponent.__Active then
 						subComponent.__Active = false
+						subComponent.__Initialized = false
 					elseif IsDescendant and not subComponent.__Active then
+						subComponent.__Active = true
 						local Init = subComponent.OnInit or subComponent.Init
 						if Init then
 							Init(subComponent)
 						end
-						subComponent.__Active = true
+						subComponent.__Initialized = true
 					end
 				end
 
 				Cleaner:Connect(Object.AncestryChanged, AncestryChanged)
+
 				if Object:IsA("Model") then
 					Cleaner:Connect(Object:GetPropertyChangedSignal("PrimaryPart"), AncestryChanged)
 				end
+
 				task.spawn(AncestryChanged)
 
 				Cleaner:Connect(Object.Destroying, function()
